@@ -49,7 +49,7 @@ docker run -itd -p 8800:8800 -name http-server \
 -e SHOW_DIR_SIZE \
 -v you_file_path:/data \
 --restart always \
-moki-http-server:latest
+mokibox/moki-http-server
 ```
 
 ### 使用Docker-compose
@@ -61,7 +61,7 @@ version: '3.8'
 
 services:
 http-server:
-image: moki-http-server:latest
+image: mokibox/moki-http-server
 container_name: http-server
 ports:
 
