@@ -22,9 +22,7 @@ var (
 
 // 验证cookie中密钥是否正取
 func authToCookie(cookie *http.Cookie) error {
-	mu.Lock()
 	if authCode == "" {
-		defer mu.Unlock()
 		logrus.Warning("cookie验证, 验证密码未设置!")
 		return nil
 	}
@@ -32,36 +30,36 @@ func authToCookie(cookie *http.Cookie) error {
 		logrus.Error("cookie验证, cookie为空!")
 		return errors.New("未验证, 请先进行验证! ")
 	}
-	defer mu.Unlock()
 	sessionId := cookie.Value
 	sessionTime := sessionStore[sessionId]
 	// 判断是否过期
 	if sessionTime.Add(sessionTimeout).Before(time.Now()) {
+		mu.Lock()
+		defer mu.Unlock()
 		delete(sessionStore, sessionId)
 		logrus.Error("cookie验证, session已经过期!")
 		return errors.New("验证已过期, 请重新验证! ")
 	}
-	logrus.Error("cookie验证, 验证通过!")
+	logrus.Info("cookie验证, 验证通过!")
 	return nil
 }
 
 // 验证密码并下发cookie
 func authToCode(valAuthCode string, now time.Time) (*http.Cookie, error) {
-	mu.Lock()
 	if authCode == "" {
-		defer mu.Unlock()
 		logrus.Warning("密码验证, 验证密码未设置!")
 		return nil, nil
 	}
 	if valAuthCode == generateHash(authCode, -1) {
 		id := generateSessionID()
-		sessionStore[id] = now
+		pathMd5 := generateHash(authCode+strconv.FormatInt(now.Unix(), 10), 8)
 		cookie := &http.Cookie{
 			Name:  "session_id",
 			Value: id,
 		}
-		pathMd5 := generateHash(authCode+strconv.FormatInt(now.Unix(), 10), 8)
+		mu.Lock()
 		defer mu.Unlock()
+		sessionStore[id] = now
 		pathMd5Store[pathMd5] = "saved"
 		logrus.Info("密码验证, 验证已通过! ")
 		return cookie, nil

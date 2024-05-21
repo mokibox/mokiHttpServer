@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"path/filepath"
@@ -49,12 +50,12 @@ func handleNum(num float64) string {
 }
 
 // 计算文件大小
-func dirSize(dir string) (int64, error) {
+func dirSize(dir string) int64 {
 	var size int64
 	// 遍历文件夹下的所有文件和子文件夹
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			logrus.Error("计算文件夹大小发生异常, 异常为: ", err)
 		}
 		// 如果是文件，则累加文件大小
 		if !info.IsDir() {
@@ -63,9 +64,10 @@ func dirSize(dir string) (int64, error) {
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		logrus.Error("计算文件夹大小发生异常, 异常为: ", err)
+		return 0
 	}
-	return size, nil
+	return size
 }
 
 // 生成hash
@@ -87,7 +89,7 @@ func generateSessionID() string {
 	b := make([]byte, 32)
 	_, err := rand.Read(b)
 	if err != nil {
-		fmt.Println("sessionId生成异常! ", err)
+		logrus.Error("sessionId生成发生异常, 异常为: ", err)
 		return ""
 	}
 	// 将随机字节数组编码为URL安全的Base64字符串
@@ -99,22 +101,24 @@ func createZipDir(dir, zipFile string) {
 	// 创建一个新的 zip 文件
 	newZipFile, err := os.Create(zipFile)
 	if err != nil {
-		fmt.Println("文件创建失败!", err)
+		logrus.Error("压缩文件创建发生异常, 异常为: ", err)
 		return
 	}
 	defer func(newZipFile *os.File) {
-		err := newZipFile.Close()
+		err = newZipFile.Close()
 		if err != nil {
-			fmt.Println("zip创建异常: ", err)
+			logrus.Error("压缩文件创建发生异常, 异常为: ", err)
+			return
 		}
 	}(newZipFile)
 
 	// 创建一个 zip.Writer
 	zipWriter := zip.NewWriter(newZipFile)
 	defer func(zipWriter *zip.Writer) {
-		err := zipWriter.Close()
+		err = zipWriter.Close()
 		if err != nil {
-			fmt.Println("zip写对象创建异常: ", err)
+			logrus.Error("压缩文件创建发生异常, 异常为: ", err)
+			return
 		}
 	}(zipWriter)
 
@@ -126,14 +130,18 @@ func createZipDir(dir, zipFile string) {
 
 		// 将文件或目录添加到 zip 文件中
 		if !info.IsDir() {
-			file, err := os.Open(path)
+			var (
+				file *os.File
+				f    io.Writer
+			)
+			file, err = os.Open(path)
 			if err != nil {
 				return err
 			}
 			defer func(file *os.File) {
-				err := file.Close()
+				err = file.Close()
 				if err != nil {
-
+					logrus.Warning("压缩文件创建发生异常, 异常为: ", err)
 				}
 			}(file)
 
@@ -143,7 +151,7 @@ func createZipDir(dir, zipFile string) {
 				return nil
 			}
 			zipPath = filepath.ToSlash(zipPath)
-			f, err := zipWriter.Create(zipPath)
+			f, err = zipWriter.Create(zipPath)
 			if err != nil {
 				return err
 			}
@@ -157,7 +165,7 @@ func createZipDir(dir, zipFile string) {
 		return nil
 	})
 	if err != nil {
-		return
+		logrus.Warning("压缩文件创建发生异常, 异常为: ", err)
 	}
 }
 
