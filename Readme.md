@@ -32,7 +32,7 @@ go run main.go
 拉取镜像 :
 
 ```shell
-docker pull moki-http-server:latest
+docker pull mokibox/moki-http-server
 ```
 
 启动程序 :
